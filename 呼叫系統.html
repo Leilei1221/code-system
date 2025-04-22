@@ -591,3 +591,126 @@
         5: seatInputs[5].value.trim(),
         6: seatInputs[6].value.trim(),
         7: seatInputs[7].value.trim()
+        // 檢查是否至少有一個座號填寫
+      const hasAnySeatNumber = Object.values(seats).some(seat => seat !== '');
+      
+      if (!hasAnySeatNumber) {
+        alert('請至少為一個組別填寫座號！');
+        return;
+      }
+      
+      // 更新所有有座號的組別
+      let updatedCount = 0;
+      
+      for (let groupId = 1; groupId <= 7; groupId++) {
+        if (seats[groupId] !== '') {
+          groups[groupId] = { status: '呼叫中', seatNumber: seats[groupId] };
+          updatedCount++;
+        }
+      }
+      
+      // 發布更新
+      publishUpdate();
+      
+      // 更新顯示
+      updateControlStatusDisplay();
+      
+      alert(`成功呼叫 ${updatedCount} 個組別！`);
+      
+      // 清空所有輸入框
+      for (let i = 1; i <= 7; i++) {
+        seatInputs[i].value = '';
+      }
+    });
+    
+    // 更新控制端狀態顯示
+    function updateControlStatusDisplay() {
+      // 清空容器
+      controlStatusContainer.innerHTML = '';
+      
+      // 為每個組別創建狀態顯示
+      for (let groupId = 1; groupId <= 7; groupId++) {
+        const group = groups[groupId] || { status: '待命', seatNumber: null };
+        
+        const statusItem = document.createElement('div');
+        statusItem.className = `p-3 rounded-md ${group.status === '呼叫中' ? 'bg-red-800' : 'bg-gray-700'}`;
+        
+        statusItem.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-bold">組別 ${groupId}</span>
+            <span class="px-2 py-1 rounded-full text-sm ${group.status === '呼叫中' ? 'bg-red-500' : 'bg-green-500'}">${group.status}</span>
+          </div>
+          ${group.seatNumber ? `<div class="mt-1">座號: ${group.seatNumber}</div>` : ''}
+        `;
+        
+        controlStatusContainer.appendChild(statusItem);
+      }
+    }
+    
+    // 更新顯示端面板
+    function updateDisplayPanel() {
+      // 清空容器
+      displayContainer.innerHTML = '';
+      
+      // 添加一個「全部重置」按鈕
+      const resetAllContainer = document.createElement('div');
+      resetAllContainer.className = "col-span-full mb-4 text-center";
+      resetAllContainer.innerHTML = `
+        <button id="resetAllBtn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-md font-bold text-lg">
+          全部重置
+        </button>
+      `;
+      displayContainer.appendChild(resetAllContainer);
+      
+      // 為重置所有組別按鈕添加事件
+      document.getElementById('resetAllBtn').addEventListener('click', () => {
+        if (confirm('確定要重置所有組別嗎？')) {
+          for (let i = 1; i <= 7; i++) {
+            groups[i] = { status: '待命', seatNumber: null };
+          }
+          publishUpdate();
+          updateDisplayPanel();
+        }
+      });
+      
+      // 為每個組別創建卡片
+      for (let groupId = 1; groupId <= 7; groupId++) {
+        const group = groups[groupId] || { status: '待命', seatNumber: null };
+        
+        const card = document.createElement('div');
+        card.className = `border-2 rounded-lg p-4 ${group.status === '呼叫中' ? 'border-red-500 blinking' : 'border-green-500'}`;
+        
+        card.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">組別 ${groupId}</h2>
+            <span class="px-3 py-1 rounded-full ${group.status === '呼叫中' ? 'bg-red-500' : 'bg-green-500'}">${group.status}</span>
+          </div>
+          <div class="flex flex-col space-y-2">
+            <div class="text-xl ${group.seatNumber ? 'font-bold' : 'text-gray-400'}">
+              座號: <span>${group.seatNumber || '無'}</span>
+            </div>
+            <button class="reset-btn mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md ${group.status === '待命' ? 'opacity-50 cursor-not-allowed' : ''}" data-group="${groupId}">
+              重置狀態
+            </button>
+          </div>
+        `;
+        
+        displayContainer.appendChild(card);
+      }
+      
+      // 為重置按鈕添加事件
+      document.querySelectorAll('.reset-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+          const groupId = parseInt(event.target.dataset.group);
+          
+          if (groups[groupId] && groups[groupId].status !== '待命') {
+            groups[groupId] = { status: '待命', seatNumber: null };
+            publishUpdate();
+            updateDisplayPanel();
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>
