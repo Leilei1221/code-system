@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>城市碼呼叫系統</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+  <style>
+    @keyframes blink {
+      0% { background-color: #FF4136; }
+      50% { background-color: #FF851B; }
+      100% { background-color: #FF4136; }
+    }
+    
+    .blinking {
+      animation: blink 1s infinite;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .pets-container {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .pets-left {
+      left: 0;
+    }
+    
+    .pets-right {
+      right: 0;
+      transform: scaleX(-1);
+    }
+    
+    @media (max-width: 768px) {
+      .pets-container {
+        display: none;
+      }
+    }
+    
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 90px;
+    }
+    
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 0 20px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white">
+  <!-- 左側動物圖案 -->
+  <div class="pets-container pets-left">
+    <svg width="80" height="800" viewBox="0 0 200 800" xmlns="http://www.w3.org/2000/svg">
+      <path d="M100,0 v800" stroke="transparent" fill="none" />
+      <g fill="white" stroke="black" stroke-width="2">
+        <path d="M120,50 c10,0 20,10 15,20 c-5,10 -15,10 -20,5 c-5,-5 -5,-15 5,-25 z" /> <!-- 狗 -->
+        <path d="M120,150 l20,20 l-20,20 l-20,-20 z" /> <!-- 鳥 -->
+        <path d="M140,150 a10,10 0 1,1 -20,0 a10,10 0 1,1 20,0 z" /> <!-- 鳥眼睛 -->
+        <path d="M120,250 l30,30 l-30,30 l-30,-30 z" /> <!-- 貓1 -->
+        <path d="M120,395 a15,15 0 1,1 0,-30 a15,15 0 1,1 0,30 z" /> <!-- 貓臉2 -->
+        <path d="M135,380 h15" stroke-linecap="round" /> <!-- 貓鬍鬚 -->
+        <path d="M90,380 h15" stroke-linecap="round" />
+        <path d="M120,470 a25,25 0 1,1 0,-50 a25,25 0 1,1 0,50 z" fill="black" /> <!-- 黑貓 -->
+        <path d="M130,445 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" fill="white" /> <!-- 黑貓眼睛 -->
+        <path d="M120,550 l30,30 l-30,30 l-30,-30 z" /> <!-- 貓3 -->
+        <path d="M110,550 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" /> <!-- 貓眼睛 -->
+        <path d="M130,550 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" />
+        <path d="M120,650 a20,20 0 1,1 0,-40 a20,20 0 1,1 0,40 z" /> <!-- 微笑貓 -->
+        <path d="M110,625 c0,10 20,10 20,0" fill="none" /> <!-- 微笑 -->
+        <path d="M110,615 l5,5" /> <!-- 貓鬍鬚 -->
+        <path d="M125,615 l5,5" />
+        <path d="M110,635 h-5" />
+        <path d="M130,635 h5" />
+      </g>
+    </svg>
+  </div>
+  
+  <!-- 右側動物圖案 (水平翻轉) -->
+  <div class="pets-container pets-right">
+    <svg width="80" height="800" viewBox="0 0 200 800" xmlns="http://www.w3.org/2000/svg">
+      <path d="M100,0 v800" stroke="transparent" fill="none" />
+      <g fill="white" stroke="black" stroke-width="2">
+        <path d="M120,50 c10,0 20,10 15,20 c-5,10 -15,10 -20,5 c-5,-5 -5,-15 5,-25 z" /> <!-- 狗 -->
+        <path d="M120,150 l20,20 l-20,20 l-20,-20 z" /> <!-- 鳥 -->
+        <path d="M140,150 a10,10 0 1,1 -20,0 a10,10 0 1,1 20,0 z" /> <!-- 鳥眼睛 -->
+        <path d="M120,250 l30,30 l-30,30 l-30,-30 z" /> <!-- 貓1 -->
+        <path d="M120,395 a15,15 0 1,1 0,-30 a15,15 0 1,1 0,30 z" /> <!-- 貓臉2 -->
+        <path d="M135,380 h15" stroke-linecap="round" /> <!-- 貓鬍鬚 -->
+        <path d="M90,380 h15" stroke-linecap="round" />
+        <path d="M120,470 a25,25 0 1,1 0,-50 a25,25 0 1,1 0,50 z" fill="black" /> <!-- 黑貓 -->
+        <path d="M130,445 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" fill="white" /> <!-- 黑貓眼睛 -->
+        <path d="M120,550 l30,30 l-30,30 l-30,-30 z" /> <!-- 貓3 -->
+        <path d="M110,550 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" /> <!-- 貓眼睛 -->
+        <path d="M130,550 a5,5 0 1,1 0,-10 a5,5 0 1,1 0,10 z" />
+        <path d="M120,650 a20,20 0 1,1 0,-40 a20,20 0 1,1 0,40 z" /> <!-- 微笑貓 -->
+        <path d="M110,625 c0,10 20,10 20,0" fill="none" /> <!-- 微笑 -->
+        <path d="M110,615 l5,5" /> <!-- 貓鬍鬚 -->
+        <path d="M125,615 l5,5" />
+        <path d="M110,635 h-5" />
+        <path d="M130,635 h5" />
+      </g>
+    </svg>
+  </div>
+
+  <div class="main-content">
+    <div class="container mx-auto px-4 py-6">
+      <header class="text-center mb-6">
+        <h1 class="text-3xl font-bold">城市碼呼叫系統</h1>
+        
+        <!-- 初始介面選擇 -->
+        <div id="initialPanel" class="mt-8">
+          <h2 class="text-2xl mb-6">請選擇操作模式</h2>
+          <div class="flex flex-col md:flex-row justify-center gap-6">
+            <div class="bg-gray-800 p-6 rounded-lg text-center">
+              <h3 class="text-xl mb-4">控制端</h3>
+              <p class="mb-4">在手機或平板上使用此模式來呼叫座號</p>
+              <button id="setupControlBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-md font-bold">
+                設置為控制端
+              </button>
+            </div>
+            
+            <div class="bg-gray-800 p-6 rounded-lg text-center">
+              <h3 class="text-xl mb-4">顯示端</h3>
+              <p class="mb-4">在大螢幕上使用此模式來顯示呼叫資訊</p>
+              <button id="setupDisplayBtn" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-md font-bold">
+                設置為顯示端
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- QR碼顯示面板 -->
+        <div id="qrSetupPanel" class="mt-8 hidden">
+          <h2 class="text-2xl mb-4">掃描QR碼連接控制端</h2>
+          <p class="mb-6">請使用手機或平板掃描下方QR碼進行控制</p>
+          <div class="flex justify-center">
+            <div id="qrcode" class="bg-white p-4 rounded-lg"></div>
+          </div>
+          <div class="mt-4">
+            <p>會話ID: <span id="sessionIdDisplay" class="font-mono bg-gray-800 px-2 py-1 rounded"></span></p>
+            <p class="mt-2 text-sm">或直接訪問連結並輸入以上會話ID</p>
+          </div>
+          <div class="mt-6">
+            <button id="startDisplayBtn" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-md font-bold">
+              開始顯示呼叫資訊
+            </button>
+          </div>
+        </div>
+        
+        <!-- 控制端會話ID輸入 -->
+        <div id="controlSetupPanel" class="mt-8 hidden">
+          <h2 class="text-2xl mb-4">輸入會話ID連接顯示端</h2>
+          <p class="mb-6">請輸入顯示端提供的會話ID</p>
+          <div class="flex justify-center">
+            <input type="text" id="sessionIdInput" placeholder="輸入會話ID" class="px-4 py-2 bg-gray-800 rounded-md text-center w-64 text-white" />
+          </div>
+          <div class="mt-6">
+            <button id="connectControlBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-md font-bold">
+              連接顯示端
+            </button>
+          </div>
+        </div>
+        
+        <!-- 連接狀態顯示 -->
+        <div id="connectionStatus" class="mt-2 hidden">
+          <span id="statusIndicator" class="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+          <span id="statusText">未連接</span>
+        </div>
+        
+        <!-- 模式切換按鈕 (只在已設置模式後顯示) -->
+        <div id="modeSwitchBtns" class="mt-4 flex justify-center hidden">
+          <button id="controlModeBtn" class="mx-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md">控制端</button>
+          <button id="displayModeBtn" class="mx-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md">顯示端</button>
+        </div>
+      </header>
+      
+      <!-- 控制端介面 -->
+      <div id="controlPanel" class="mb-6 p-4 bg-gray-800 rounded-lg hidden">
+        <h2 class="text-xl font-bold mb-4">呼叫控制</h2>
+        
+        <div class="mb-4">
+          <label class="block text-lg mb-2">各組座號設定：</label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat1" class="block mb-1">組別 1 座號：</label>
+              <input type="number" id="seat1" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat2" class="block mb-1">組別 2 座號：</label>
+              <input type="number" id="seat2" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat3" class="block mb-1">組別 3 座號：</label>
+              <input type="number" id="seat3" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat4" class="block mb-1">組別 4 座號：</label>
+              <input type="number" id="seat4" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat5" class="block mb-1">組別 5 座號：</label>
+              <input type="number" id="seat5" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat6" class="block mb-1">組別 6 座號：</label>
+              <input type="number" id="seat6" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <label for="seat7" class="block mb-1">組別 7 座號：</label>
+              <input type="number" id="seat7" class="w-full p-2 bg-gray-600 rounded-md text-white" placeholder="請輸入座號" min="1" max="999">
+            </div>
+            <div class="p-2 bg-gray-700 rounded-md">
+              <button id="batchCallButton" class="w-full py-3 bg-red-600 hover:bg-red-700 rounded-md font-bold text-xl">
+                批量呼叫所有組別
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-4 border-t-2 border-gray-700 pt-4">
+          <h3 class="text-lg font-bold mb-2">快速單組呼叫</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="groupSelect" class="block mb-1">選擇組別：</label>
+              <select id="groupSelect" class="w-full p-2 bg-gray-700 rounded-md text-white">
+                <option value="1">組別 1</option>
+                <option value="2">組別 2</option>
+                <option value="3">組別 3</option>
+                <option value="4">組別 4</option>
+                <option value="5">組別 5</option>
+                <option value="6">組別 6</option>
+                <option value="7">組別 7</option>
+              </select>
+            </div>
+            <div>
+              <label for="seatNumber" class="block mb-1">輸入座號：</label>
+              <input 
+                type="number" 
+                id="seatNumber" 
+                class="w-full p-2 bg-gray-700 rounded-md text-white" 
+                placeholder="請輸入座號"
+                min="1"
+                max="999"
+              >
+            </div>
+          </div>
+          <button 
+            id="callButton" 
+            class="w-full mt-3 py-2 bg-red-600 hover:bg-red-700 rounded-md font-bold text-lg"
+          >
+            呼叫單一組別
+          </button>
+        </div>
+        
+        <div class="mt-4">
+          <h3 class="text-lg font-bold mb-2">組別狀態</h3>
+          <div id="controlStatusContainer" class="grid grid-cols-1 gap-2">
+            <!-- 控制端狀態顯示 -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- 顯示端介面 -->
+      <div id="displayPanel" class="hidden">
+        <h2 class="text-2xl font-bold mb-4 text-center">顯示端</h2>
+        <div id="displayContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- 顯示端卡片顯示 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 初始化 PubNub
+    const pubnub = new PubNub({
+      publishKey: "pub-c-01e3f67f-2f5d-42d2-a8c2-aa5e1ec2d371",
+      subscribeKey: "sub-c-6557fd4f-8daa-41f7-a4af-e452e74f5fc3",
+      uuid: "citycode-user-" + Math.random().toString(36).substring(2, 9)
+    });
+    
+    // 解析URL參數
+    function getUrlParams() {
+      const params = {};
+      const queryString = window.location.search.substring(1);
+      const pairs = queryString.split('&');
+      
+      for (let i = 0; i < pairs.length; i++) {
+        const pair = pairs[i].split('=');
+        params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+      }
+      
+      return params;
+    }
+    
+    // DOM 元素 - 初始設置
+    const initialPanel = document.getElementById('initialPanel');
+    const qrSetupPanel = document.getElementById('qrSetupPanel');
+    const controlSetupPanel = document.getElementById('controlSetupPanel');
+    const setupControlBtn = document.getElementById('setupControlBtn');
+    const setupDisplayBtn = document.getElementById('setupDisplayBtn');
+    const sessionIdDisplay = document.getElementById('sessionIdDisplay');
+    const sessionIdInput = document.getElementById('sessionIdInput');
+    const connectControlBtn = document.getElementById('connectControlBtn');
+    const startDisplayBtn = document.getElementById('startDisplayBtn');
+    const modeSwitchBtns = document.getElementById('modeSwitchBtns');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    
+    // DOM 元素 - 主操作界面
+    const controlPanel = document.getElementById('controlPanel');
+    const displayPanel = document.getElementById('displayPanel');
+    const controlModeBtn = document.getElementById('controlModeBtn');
+    const displayModeBtn = document.getElementById('displayModeBtn');
+    const groupSelect = document.getElementById('groupSelect');
+    const seatNumberInput = document.getElementById('seatNumber');
+    const callButton = document.getElementById('callButton');
+    const batchCallButton = document.getElementById('batchCallButton');
+    const controlStatusContainer = document.getElementById('controlStatusContainer');
+    const displayContainer = document.getElementById('displayContainer');
+    
+    // 批量呼叫相關元素
+    const seatInputs = {
+      1: document.getElementById('seat1'),
+      2: document.getElementById('seat2'),
+      3: document.getElementById('seat3'),
+      4: document.getElementById('seat4'),
+      5: document.getElementById('seat5'),
+      6: document.getElementById('seat6'),
+      7: document.getElementById('seat7')
+    };
+    
+    // 生成一個唯一的會話ID
+    const generateSessionId = () => {
+      return Math.random().toString(36).substring(2, 6).toUpperCase();
+    };
+    
+    // 當前會話ID
+    let sessionId = '';
+    
+    // 存儲組別數據
+    let groups = {
+      1: { status: '待命', seatNumber: null },
+      2: { status: '待命', seatNumber: null },
+      3: { status: '待命', seatNumber: null },
+      4: { status: '待命', seatNumber: null },
+      5: { status: '待命', seatNumber: null },
+      6: { status: '待命', seatNumber: null },
+      7: { status: '待命', seatNumber: null }
+    };
+    
+    // 當前模式（"control" 或 "display"）
+    let currentMode = "";
+    
+    // 更新連接狀態
+    function updateConnectionStatus(isConnected) {
+      connectionStatus.classList.remove('hidden');
+      
+      if (isConnected) {
+        statusIndicator.classList.remove('bg-red-500');
+        statusIndicator.classList.add('bg-green-500');
+        statusText.textContent = '已連接';
+      } else {
+        statusIndicator.classList.remove('bg-green-500');
+        statusIndicator.classList.add('bg-red-500');
+        statusText.textContent = '未連接';
+      }
+    }
+    
+    // 監聽 PubNub 訊息
+    pubnub.addListener({
+      status: function(statusEvent) {
+        if (statusEvent.category === "PNConnectedCategory") {
+          updateConnectionStatus(true);
+        } else if (statusEvent.category === "PNDisconnectedCategory" || 
+                  statusEvent.category === "PNNetworkIssuesCategory") {
+          updateConnectionStatus(false);
+        }
+      },
+      message: function(messageEvent) {
+        // 收到消息時更新狀態
+        if (messageEvent.channel === `cityCode_${sessionId}`) {
+          const data = messageEvent.message;
+          
+          if (data.type === 'update') {
+            groups = data.groups;
+            
+            // 根據當前模式更新界面
+            if (currentMode === 'control') {
+              updateControlStatusDisplay();
+            } else if (currentMode === 'display') {
+              updateDisplayPanel();
+            }
+          }
+        }
+      }
+    });
+    
+    // 發布更新消息
+    function publishUpdate() {
+      pubnub.publish({
+        channel: `cityCode_${sessionId}`,
+        message: {
+          type: 'update',
+          groups: groups
+        }
+      });
+    }
+    
+    // 解析URL參數並進行相應操作
+    const urlParams = getUrlParams();
+    if (urlParams.mode && urlParams.session) {
+      // 從URL參數中獲取會話ID
+      sessionId = urlParams.session;
+      
+      if (urlParams.mode === 'control') {
+        // 直接進入控制端
+        initialPanel.classList.add('hidden');
+        sessionIdInput.value = sessionId;
+        connectControl();
+      } else if (urlParams.mode === 'display') {
+        // 直接進入顯示端
+        initialPanel.classList.add('hidden');
+        sessionId = urlParams.session;
+        startDisplay();
+      }
+    }
+    
+    // 設置按鈕事件
+    setupDisplayBtn.addEventListener('click', () => {
+      // 生成新會話ID
+      sessionId = generateSessionId();
+      sessionIdDisplay.textContent = sessionId;
+      
+      // 顯示QR碼設置面板
+      initialPanel.classList.add('hidden');
+      qrSetupPanel.classList.remove('hidden');
+      
+      // 生成QR碼
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      
+      // 構建URL（包含當前頁面URL和會話ID）
+      const currentUrl = window.location.href.split('?')[0];
+      const controlUrl = `${currentUrl}?mode=control&session=${sessionId}`;
+      
+      // 生成QR碼
+      new QRCode(qrContainer, {
+        text: controlUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+      
+      // 訂閱頻道
+      pubnub.subscribe({
+        channels: [`cityCode_${sessionId}`]
+      });
+    });
+    
+    setupControlBtn.addEventListener('click', () => {
+      // 顯示控制端設置面板
+      initialPanel.classList.add('hidden');
+      controlSetupPanel.classList.remove('hidden');
+    });
+    
+    function connectControl() {
+      currentMode = 'control';
+      
+      // 訂閱頻道
+      pubnub.subscribe({
+        channels: [`cityCode_${sessionId}`]
+      });
+      
+      // 顯示控制端界面
+      controlSetupPanel.classList.add('hidden');
+      modeSwitchBtns.classList.remove('hidden');
+      controlPanel.classList.remove('hidden');
+      
+      // 更新控制端狀態顯示
+      updateControlStatusDisplay();
+    }
+    
+    connectControlBtn.addEventListener('click', () => {
+      // 獲取輸入的會話ID
+      const inputSessionId = sessionIdInput.value.trim().toUpperCase();
+      
+      if (!inputSessionId) {
+        alert('請輸入會話ID！');
+        return;
+      }
+      
+      // 設置當前會話ID
+      sessionId = inputSessionId;
+      
+      connectControl();
+    });
+    
+    function startDisplay() {
+      currentMode = 'display';
+      
+      // 訂閱頻道
+      pubnub.subscribe({
+        channels: [`cityCode_${sessionId}`]
+      });
+      
+      // 從QR碼設置轉到顯示端界面
+      qrSetupPanel.classList.add('hidden');
+      modeSwitchBtns.classList.remove('hidden');
+      displayPanel.classList.remove('hidden');
+      
+      // 更新顯示端面板
+      updateDisplayPanel();
+    }
+    
+    startDisplayBtn.addEventListener('click', () => {
+      startDisplay();
+    });
+    
+    // 模式切換
+    controlModeBtn.addEventListener('click', () => {
+      currentMode = 'control';
+      controlPanel.classList.remove('hidden');
+      displayPanel.classList.add('hidden');
+      controlModeBtn.classList.add('bg-blue-600');
+      controlModeBtn.classList.remove('bg-blue-500');
+      displayModeBtn.classList.add('bg-green-500');
+      displayModeBtn.classList.remove('bg-green-600');
+      updateControlStatusDisplay();
+    });
+    
+    displayModeBtn.addEventListener('click', () => {
+      currentMode = 'display';
+      controlPanel.classList.add('hidden');
+      displayPanel.classList.remove('hidden');
+      controlModeBtn.classList.add('bg-blue-500');
+      controlModeBtn.classList.remove('bg-blue-600');
+      displayModeBtn.classList.add('bg-green-600');
+      displayModeBtn.classList.remove('bg-green-500');
+      updateDisplayPanel();
+    });
+    
+    // 單一組別呼叫按鈕事件
+    callButton.addEventListener('click', () => {
+      const groupId = parseInt(groupSelect.value);
+      const seatNumber = seatNumberInput.value.trim();
+      
+      if (!seatNumber) {
+        alert('請輸入座號！');
+        return;
+      }
+      
+      // 更新特定組別
+      groups[groupId] = { status: '呼叫中', seatNumber: seatNumber };
+      
+      // 發布更新
+      publishUpdate();
+      
+      // 更新顯示
+      updateControlStatusDisplay();
+      
+      // 清空座號輸入框
+      seatNumberInput.value = '';
+    });
+    
+    // 批量呼叫按鈕事件
+    batchCallButton.addEventListener('click', () => {
+      // 獲取所有填寫的座號
+      const seats = {
+        1: seatInputs[1].value.trim(),
+        2: seatInputs[2].value.trim(),
+        3: seatInputs[3].value.trim(),
+        4: seatInputs[4].value.trim(),
+        5: seatInputs[5].value.trim(),
+        6: seatInputs[6].value.trim(),
+        7: seatInputs[7].value.trim()
